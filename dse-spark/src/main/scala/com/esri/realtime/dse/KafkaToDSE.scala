@@ -1,8 +1,11 @@
 package com.esri.realtime.dse
 
+import java.util.UUID
+
 import com.datastax.driver.core.ConsistencyLevel
 import com.datastax.spark.connector._
 import com.datastax.spark.connector.cql.CassandraConnector
+import com.fasterxml.jackson.dataformat.csv.{CsvMapper, CsvParser, CsvSchema}
 import org.apache.commons.logging.LogFactory
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.spark.streaming.dstream.DStream
@@ -11,6 +14,8 @@ import org.apache.spark.streaming.kafka010.KafkaUtils
 import org.apache.spark.streaming.kafka010.LocationStrategies.PreferConsistent
 import org.apache.spark.streaming.{Milliseconds, StreamingContext}
 import org.apache.spark.{SparkConf, SparkContext}
+
+import scala.util.Random
 
 //
 // Spark-DSE-Connector:  https://github.com/datastax/spark-cassandra-connector
@@ -41,11 +46,11 @@ object KafkaToDSE{
         //.set("spark.cassandra.connection.keep_alive_ms", "10000") //default is 250
         //.set("spark.cassandra.output.batch.size.rows", "1000") // default is "auto"
         //.set("spark.cassandra.output.batch.size.bytes", (1000000).toString) //default is 16 KB
-        .set("spark.cassandra.output.concurrent.writes", "1000") // default is "8"
+        //.set("spark.cassandra.output.concurrent.writes", "1000") // default is "8"
         //.set("spark.cassandra.output.batch.grouping.buffer.size", "2000") // default is 1000
         //.set("spark.cassandra.output.throughput_mb_per_sec", Int.MaxValue.toString)   //default: Int.MaxValue.
         //.set("spark.cassandra.output.metrics", "true")            // default: true
-        .set("spark.cassandra.output.consistency.level", ConsistencyLevel.ONE.toString)
+        //.set("spark.cassandra.output.consistency.level", ConsistencyLevel.ONE.toString)
         .setAppName(getClass.getSimpleName)
 
     val sc = new SparkContext(sparkMaster, "KafkaToDSE", sConf)
@@ -62,7 +67,7 @@ object KafkaToDSE{
         session.execute(s"""
         CREATE TABLE IF NOT EXISTS $keyspace.$table
         (
-          id int,
+          id text,
           ts timestamp,
           speed double,
           dist double,
@@ -144,8 +149,11 @@ object KafkaToDSE{
       dataStream.foreachRDD {
         (rdd, time) =>
           val count = rdd.count()
-          if (count > 0)
-            log.warn("Time %s: saving to DSE (%s total records)".format(time, count))
+          if (count > 0) {
+            val msg = "Time %s: saving to DSE (%s total records)".format(time, count)
+            log.warn(msg)
+            println(msg)
+          }
       }
     }
 
@@ -196,13 +204,36 @@ object KafkaToDSE{
     unifiedStream
   }
 
+  // used to generate a random uuid
+  private val RANDOM = new Random()
+
+  // initialized the object mapper / text parser only once
+  private val objectMapper = {
+    // create an empty schema
+    val schema = CsvSchema.emptySchema()
+        .withColumnSeparator(',')
+        .withLineSeparator("\\n")
+    // create the mapper
+    val csvMapper = new CsvMapper()
+    csvMapper.enable(CsvParser.Feature.WRAP_AS_ARRAY)
+    csvMapper
+        .readerFor(classOf[Array[String]])
+        .`with`(schema)
+  }
+
+
   /**
     * Adapt to the very specific Safegraph Schema
     */
   private def adaptSpecific(line: String) = {
-    val row = line.split(",")
-    val id = row(0).toInt
-    val ts = System.currentTimeMillis() // NOTE: This is to ensure unique records
+    val uuid = new UUID(RANDOM.nextLong(), RANDOM.nextLong())
+
+    // parse out the line
+    val rows = objectMapper.readValues[Array[String]](line)
+    val row = rows.nextValue()
+
+    val id = uuid.toString              // NOTE: This is to ensure unique records
+    val ts = row(1).toLong
     val speed = row(2).toDouble
     val dist = row(3).toDouble
     val bearing = row(4).toDouble
