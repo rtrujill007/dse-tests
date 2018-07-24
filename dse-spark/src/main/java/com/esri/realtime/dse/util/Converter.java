@@ -1,9 +1,7 @@
 package com.esri.realtime.dse.util;
 
-import com.esri.core.geometry.MapGeometry;
 import org.apache.commons.lang3.StringUtils;
 
-import java.io.IOException;
 import java.text.ParseException;
 import java.util.Calendar;
 import java.util.Date;
