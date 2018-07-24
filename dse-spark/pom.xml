@@ -58,6 +58,12 @@
 			<version>${scala.version}</version>
 		</dependency>
 		<dependency>
+			<groupId>com.datastax.spark</groupId>
+			<artifactId>spark-cassandra-connector_2.11</artifactId>
+			<version>2.3.1</version>
+		</dependency>
+		<!--
+		<dependency>
 			<groupId>com.datastax.dse</groupId>
 			<artifactId>dse-spark-dependencies</artifactId>
 			<version>${dse.version}</version>
@@ -136,6 +142,7 @@
 				</exclusion>
 			</exclusions>
 		</dependency>
+		-->
 		<dependency>
 			<groupId>com.fasterxml.jackson.dataformat</groupId>
 			<artifactId>jackson-dataformat-csv</artifactId>
@@ -176,6 +183,7 @@
 		</dependency>
 
 		<!-- Logging -->
+		<!--
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-api</artifactId>
@@ -201,6 +209,7 @@
 			<artifactId>slf4j-log4j12</artifactId>
 			<version>1.7.10</version>
 		</dependency>
+	  -->
 
 		<!-- Tests -->
 		<dependency>
