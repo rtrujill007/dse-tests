@@ -39,10 +39,16 @@ object KafkaToDSE{
     }
 
     val Array(sparkMaster, emitInterval, kBrokers, kConsumerGroup, kTopics, kThreads, kCassandraHost, kReplicationFactor, storeGeo, kDebug) = args
+    val useSolr = storeGeo.toBoolean
+    println("Using Solr ? " + useSolr)
 
     // configuration
     val sConf = new SparkConf(true)
         .set("spark.cassandra.connection.host", kCassandraHost)
+        .set("spark.cassandra.output.concurrent.writes", "20")              // default is 5
+        .set("spark.cassandra.output.batch.size.bytes", "1024000")          // default is 1024
+        .set("spark.cassandra.output.batch.grouping.buffer.size", "10000")  // default is 1000
+
         //.set("spark.cassandra.connection.keep_alive_ms", "10000") //default is 250
         //.set("spark.cassandra.output.batch.size.rows", "1000") // default is "auto"
         //.set("spark.cassandra.output.batch.size.bytes", (1000000).toString) //default is 16 KB
@@ -50,7 +56,7 @@ object KafkaToDSE{
         //.set("spark.cassandra.output.batch.grouping.buffer.size", "2000") // default is 1000
         //.set("spark.cassandra.output.throughput_mb_per_sec", Int.MaxValue.toString)   //default: Int.MaxValue.
         //.set("spark.cassandra.output.metrics", "true")            // default: true
-        //.set("spark.cassandra.output.consistency.level", ConsistencyLevel.ONE.toString)
+        .set("spark.cassandra.output.consistency.level", ConsistencyLevel.ONE.toString)
         .setAppName(getClass.getSimpleName)
 
     val sc = new SparkContext(sparkMaster, "KafkaToDSE", sConf)
@@ -84,55 +90,58 @@ object KafkaToDSE{
         )"""
         )
 
-        //
-        // NOTE: LOOK AT THE SOFT COMMIT INTERVAL IN SOLR
-        //
-        // enable search on all fields (except geometry)
-        session.execute(
-          s"""
-             | CREATE SEARCH INDEX ON $keyspace.$table
-             | WITH COLUMNS
-             |  id,
-             |  ts,
-             |  speed,
-             |  dist,
-             |  bearing,
-             |  rtid,
-             |  orig,
-             |  dest,
-             |  secstodep,
-             |  lon,
-             |  lat
+        if (useSolr) {
+          //
+          // NOTE: LOOK AT THE SOFT COMMIT INTERVAL IN SOLR
+          //
+          // enable search on all fields (except geometry)
+          session.execute(
+            s"""
+               | CREATE SEARCH INDEX ON $keyspace.$table
+               | WITH COLUMNS
+               |  id,
+               |  ts,
+               |  speed,
+               |  dist,
+               |  bearing,
+               |  rtid,
+               |  orig,
+               |  dest,
+               |  secstodep,
+               |  lon,
+               |  lat
          """.stripMargin
-        )
+          )
 
-        // check if we want to store the Geo
-        if (storeGeo.toBoolean) {
-          // enable search on geometry field
-          session.execute(
-            s"""
-               |ALTER SEARCH INDEX SCHEMA ON $keyspace.$table
-               |ADD types.fieldType[ @name='rpt',
-               |                     @class='solr.SpatialRecursivePrefixTreeFieldType',
-               |                     @geo='false',
-               |                     @worldBounds='ENVELOPE(-1000, 1000, 1000, -1000)',
-               |                     @maxDistErr='0.001',
-               |                     @distanceUnits='degrees' ]
+          // check if we want to store the Geo
+          if (storeGeo.toBoolean) {
+            // enable search on geometry field
+            session.execute(
+              s"""
+                 |ALTER SEARCH INDEX SCHEMA ON $keyspace.$table
+                 |ADD types.fieldType[ @name='rpt',
+                 |                     @class='solr.SpatialRecursivePrefixTreeFieldType',
+                 |                     @geo='false',
+                 |                     @worldBounds='ENVELOPE(-1000, 1000, 1000, -1000)',
+                 |                     @maxDistErr='0.001',
+                 |                     @distanceUnits='degrees' ]
            """.stripMargin
-          )
-          session.execute(
-            s"""
-               |ALTER SEARCH INDEX SCHEMA ON $keyspace.$table
-               |ADD fields.field[ @name='geometry',
-               |                  @type='rpt',
-               |                  @indexed='true',
-               |                  @stored='true' ];
+            )
+            session.execute(
+              s"""
+                 |ALTER SEARCH INDEX SCHEMA ON $keyspace.$table
+                 |ADD fields.field[ @name='geometry',
+                 |                  @type='rpt',
+                 |                  @indexed='true',
+                 |                  @stored='true' ];
            """.stripMargin
-          )
-          session.execute(
-            s"RELOAD SEARCH INDEX ON $keyspace.$table"
-          )
+            )
+            session.execute(
+              s"RELOAD SEARCH INDEX ON $keyspace.$table"
+            )
+          }
         }
+
     }
 
     // the streaming context
