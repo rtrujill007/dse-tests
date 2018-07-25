@@ -19,6 +19,8 @@
 package com.esri.rttest.send;
 
 import com.datastax.driver.core.Cluster;
+import com.datastax.driver.core.HostDistance;
+import com.datastax.driver.core.PoolingOptions;
 import com.datastax.driver.core.Session;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -65,6 +67,9 @@ public class Cassandra
       if (cluster == null || cluster.isClosed())
       {
         cluster = Cluster.builder().addContactPoint(cassandraHost).build();
+        cluster.getConfiguration().getPoolingOptions().setMaxQueueSize(1000);
+        cluster.getConfiguration().getPoolingOptions().setMaxConnectionsPerHost(HostDistance.LOCAL, 16);
+        cluster.getConfiguration().getPoolingOptions().setMaxConnectionsPerHost(HostDistance.REMOTE, 8);
       }
       return cluster.connect();
     }
@@ -330,7 +335,7 @@ public class Cassandra
     
     public static void main(String args[]) throws Exception {
         if (args.length != 8 && args.length != 9) {
-            System.err.print("Usage: Cassandra <host-names> <keyspace> <tablename> <useSolr> <storeGeo> <rate> <numrecords> (<burst-delay-ms>)\n");
+            System.err.print("Usage: Cassandra <host-names> <keyspace> <tablename> <numOfThreads> <useSolr> <storeGeo> <rate> <numrecords> (<burst-delay-ms>)\n");
         } else {
             String hostNames = args[0];
             String keyspace = args[1];
