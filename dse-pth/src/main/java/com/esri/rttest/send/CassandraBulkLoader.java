@@ -17,17 +17,12 @@ import java.util.concurrent.ThreadPoolExecutor;
 
 public class CassandraBulkLoader {
 
-  private final int threads;
-  private final String contactHosts;
   private final Cluster cluster;
   private final Session session;
   private final PreparedStatement statement;
   private final ExecutorService executor;
 
   public CassandraBulkLoader(int threads, String insertCQL, String contactHosts){
-    this.threads = threads;
-    this.contactHosts = contactHosts;
-
     this.cluster = Cluster.builder().addContactPoints(contactHosts).build();
     this.session = cluster.newSession();
     this.statement = session.prepare(insertCQL);
@@ -41,13 +36,10 @@ public class CassandraBulkLoader {
 
     @Override
     public void onSuccess(ResultSet result) {
-      //System.out.println("Done writing record " + result.toString());
-      //placeholder: put any logging or on success logic here.
     }
 
     @Override
     public void onFailure(Throwable t) {
-      //go ahead and wrap in a runtime exception for this case, but you can do logging or start counting errors.
       throw new RuntimeException(t);
     }
   }
@@ -63,18 +55,8 @@ public class CassandraBulkLoader {
     }
   }
 
-  public void close() {
-    /**
-    executor.shutdown();
-    try
-    {
-      executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
-    }
-    catch (InterruptedException e)
-    {
-    }
-     **/
-
+  public void close()
+  {
     try
     {
       session.close();

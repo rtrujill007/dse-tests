@@ -72,12 +72,14 @@ public class Cassandra
     /**
      * Closes the cassandra session
      */
-    public void closeCassandraSession() {
+    public void closeCassandraSession()
+    {
       if (cluster != null)
         cluster.close();
     }
 
-    private void init(int numOfThreads, boolean useSolr, boolean storeGeo) {
+    private void init(int numOfThreads, boolean useSolr, boolean storeGeo)
+    {
       final String insertCQL =
           "INSERT INTO " + keyspace + "." + tableName +
               " (id, ts, speed, dist, bearing, rtid, orig, dest, secstodep, lon, lat, geometry) " +
