@@ -93,20 +93,11 @@ public class CassandraMon
                 LOG.info("Checking Count");
 
                 // connect to the cassandra cluster and get the count
-                Cluster cluster = null;
-                try {
-                    cluster = Cluster.builder()
-                        .addContactPoint(cassandraHost)
-                        .build();
-                    Session session = cluster.connect();
+                Session session = createOrGetCassandraSession();
 
-                    ResultSet rs = session.execute("SELECT COUNT(*) as COUNT FROM " + keyspace + "." + tableName + "");
-                    Row row = rs.one();
-                    cnt1 = row.getLong("COUNT");
-                } finally {
-                    if (cluster != null)
-                        cluster.close();                                          // (5)
-                }
+                ResultSet rs = session.execute("SELECT COUNT(*) as COUNT FROM " + keyspace + "." + tableName + "");
+                Row row = rs.one();
+                cnt1 = row.getLong("COUNT");
 
                 t1 = System.currentTimeMillis();
 
@@ -171,6 +162,7 @@ public class CassandraMon
 
             } catch (Exception error) {
                 LOG.error("ERROR", error);
+                closeCassandraSession();
             }
 
         }
@@ -195,6 +187,23 @@ public class CassandraMon
         this.user = user;
         this.userpw = userpw;
         this.sendStdout = sendStdout;
+
+        // add the shutdown hook
+        Runtime.getRuntime().addShutdownHook(new Thread(this::closeCassandraSession));
+    }
+
+    private Cluster cluster = null;
+    private Session createOrGetCassandraSession() {
+        if (cluster == null || cluster.isClosed())
+        {
+            cluster = Cluster.builder().addContactPoint(cassandraHost).build();
+        }
+        return cluster.connect();
+    }
+
+    public void closeCassandraSession() {
+        if (cluster != null)
+            cluster.close();
     }
 
     public void run() {
@@ -206,7 +215,6 @@ public class CassandraMon
         } catch (Exception e) {
             LOG.error("ERROR", e);
         }
-
     }
 
     public static void main(String[] args) {
@@ -223,7 +231,7 @@ public class CassandraMon
         int numargs = args.length;
         if (numargs != 3 && numargs != 4 &&numargs != 6) {
             System.err.print("Usage: CassandraMon [CassandraHost] [Keyspace] [TableName] (sampleRateSec) ((username) (password))  \n");
-            System.err.println("Example: java -cp target/pth.jar com.esri.rttest.mon.CassandraMon localhost realtime safegraph 20 20 user pass");
+            System.err.println("Example: java -cp target/pth.jar com.esri.rttest.mon.CassandraMon localhost realtime safegraph 20 user pass");
         } else {
             cassandraHost = args[0];
             keyspace = args[1];

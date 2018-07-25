@@ -141,7 +141,6 @@ object KafkaToDSE{
             )
           }
         }
-
     }
 
     // the streaming context
