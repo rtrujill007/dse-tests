@@ -308,6 +308,46 @@
 				</executions>
 			</plugin>
 
+			<!-- Create the executable jar -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-dependency-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>copy-dependencies</id>
+						<phase>prepare-package</phase>
+						<goals>
+							<goal>copy-dependencies</goal>
+						</goals>
+						<configuration>
+							<outputDirectory>target/lib</outputDirectory>
+							<overWriteReleases>false</overWriteReleases>
+							<overWriteSnapshots>false</overWriteSnapshots>
+							<overWriteIfNewer>true</overWriteIfNewer>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jar-plugin</artifactId>
+				<version>2.5</version>
+				<configuration>
+					<finalName>dse-spark</finalName>
+					<outputDirectory>target</outputDirectory>
+					<archive>
+						<manifest>
+							<addClasspath>true</addClasspath>
+							<classpathPrefix>lib/</classpathPrefix>
+							<mainClass>com.esri.realtime.dse.KafkaToDSE</mainClass>
+						</manifest>
+						<manifestEntries>
+							<Class-Path>lib/</Class-Path>
+						</manifestEntries>
+					</archive>
+				</configuration>
+			</plugin>
+
 			<!--
 			<plugin>
 				<groupId>io.fabric8</groupId>
@@ -330,7 +370,6 @@
 								<runCmds>
 									<runCmd>mv /maven ${realtime.libs.dest}</runCmd>
 									<runCmd>echo "export SPARK_CLASSPATH=\"${realtime.libs.classpath}\"" | tee ${sparkenv.file.finaldest.path}</runCmd>
-
 								</runCmds>
 							</build>
 						</image>
