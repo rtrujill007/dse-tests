@@ -61,7 +61,7 @@ object KafkaToDSE{
 
     val sc = new SparkContext(sparkMaster, "KafkaToDSE", sConf)
 
-    val keyspace = "realtime"
+    val keyspace = "realtime1"
     val table = "planes"
     CassandraConnector(sConf).withSessionDo {
       session =>
