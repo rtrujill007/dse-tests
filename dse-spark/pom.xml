@@ -308,6 +308,7 @@
 				</executions>
 			</plugin>
 
+			<!--
 			<plugin>
 				<groupId>io.fabric8</groupId>
 				<artifactId>docker-maven-plugin</artifactId>
@@ -329,7 +330,7 @@
 								<runCmds>
 									<runCmd>mv /maven ${realtime.libs.dest}</runCmd>
 									<runCmd>echo "export SPARK_CLASSPATH=\"${realtime.libs.classpath}\"" | tee ${sparkenv.file.finaldest.path}</runCmd>
-									<!--<runCmd>rm /opt/spark/dist/jars/*log4j*</runCmd>-->
+
 								</runCmds>
 							</build>
 						</image>
@@ -348,6 +349,7 @@
 					</execution>
 				</executions>
 			</plugin>
+			-->
 		</plugins>
 	</build>
 

@@ -106,6 +106,7 @@ public class SolrIndexMon
 
         @Override
         public void run() {
+            String lastResponse = null;
             try {
 
                 LOG.info("Checking Count");
@@ -154,21 +155,21 @@ public class SolrIndexMon
 
                 HttpGet request = new HttpGet(url);
                 CloseableHttpResponse response = httpclient.execute(request);
-                BufferedReader rd = new BufferedReader(
-                        new InputStreamReader(response.getEntity().getContent()));
+                BufferedReader rd = new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
 
-                Header contentType = response.getEntity().getContentType();
-                String ct = contentType.getValue().split(";")[0];
+                //Header contentType = response.getEntity().getContentType();
+                //String ct = contentType.getValue().split(";")[0];
 
-                int responseCode = response.getStatusLine().getStatusCode();
+                //int responseCode = response.getStatusLine().getStatusCode();
 
                 String line;
                 StringBuilder result = new StringBuilder();
                 while ((line = rd.readLine()) != null) {
                     result.append(line);
                 }
+                lastResponse = result.toString();
 
-                JSONObject json = new JSONObject(result.toString());
+                JSONObject json = new JSONObject(lastResponse);
                 request.abort();
                 response.close();
 
@@ -235,12 +236,9 @@ public class SolrIndexMon
                 t2 = t1;
 
             } catch (IOException | UnsupportedOperationException | KeyManagementException | NoSuchAlgorithmException | JSONException e) {
-                LOG.error("ERROR", e);
-
+                LOG.error("ERROR. Last Response: " + lastResponse, e);
             }
-
         }
-
     }
 
     Timer timer;
