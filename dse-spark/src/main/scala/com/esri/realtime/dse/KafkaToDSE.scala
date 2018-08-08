@@ -32,13 +32,13 @@ object KafkaToDSE{
     */
   def main(args: Array[String]): Unit = {
 
-    if (args.length < 10) {
+    if (args.length < 11) {
       System.err.println("Usage: KafkaToDSE <sparkMaster> <emitIntervalInMillis>" +
-          " <kafkaConsumerGroup> <kafkaTopics> <kafkaThreads> <cassandraHost> <replicationFactor> <storeGeo> <debug>")
+          " <kafkaConsumerGroup> <kafkaTopics> <kafkaThreads> <cassandraHost> <replicationFactor> <recreateTable> <storeGeo> <debug>")
       System.exit(1)
     }
 
-    val Array(sparkMaster, emitInterval, kBrokers, kConsumerGroup, kTopics, kThreads, kCassandraHost, kReplicationFactor, storeGeo, kDebug) = args
+    val Array(sparkMaster, emitInterval, kBrokers, kConsumerGroup, kTopics, kThreads, kCassandraHost, kReplicationFactor, recreateTable, storeGeo, kDebug) = args
     val useSolr = storeGeo.toBoolean
     println("Using Solr ? " + useSolr)
 
@@ -63,84 +63,89 @@ object KafkaToDSE{
 
     val keyspace = "realtime1"
     val table = "planes"
-    CassandraConnector(sConf).withSessionDo {
-      session =>
-        session.execute(s"DROP KEYSPACE IF EXISTS $keyspace")
-        session.execute(s"CREATE KEYSPACE IF NOT EXISTS $keyspace WITH REPLICATION = {'class': 'SimpleStrategy', 'replication_factor': $kReplicationFactor }")
-        session.execute(s"DROP TABLE IF EXISTS $keyspace.$table")
 
-        // FiXME: Dynamically create the CREATE TABLE sql based on schema
-        session.execute(s"""
-        CREATE TABLE IF NOT EXISTS $keyspace.$table
-        (
-          id text,
-          ts timestamp,
-          speed double,
-          dist double,
-          bearing double,
-          rtid int,
-          orig text,
-          dest text,
-          secstodep int,
-          lon double,
-          lat double,
-          geometry text,
+    // check if need to recreate the tables
+    if (recreateTable.toBoolean) {
+      println(s"We are recreating the table: $keyspace.$table")
+      CassandraConnector(sConf).withSessionDo {
+        session =>
+          session.execute(s"DROP KEYSPACE IF EXISTS $keyspace")
+          session.execute(s"CREATE KEYSPACE IF NOT EXISTS $keyspace WITH REPLICATION = {'class': 'SimpleStrategy', 'replication_factor': $kReplicationFactor }")
+          session.execute(s"DROP TABLE IF EXISTS $keyspace.$table")
 
-          PRIMARY KEY (id, ts)
-        )"""
-        )
+          // FiXME: Dynamically create the CREATE TABLE sql based on schema
+          session.execute(s"""
+          CREATE TABLE IF NOT EXISTS $keyspace.$table
+          (
+            id text,
+            ts timestamp,
+            speed double,
+            dist double,
+            bearing double,
+            rtid int,
+            orig text,
+            dest text,
+            secstodep int,
+            lon double,
+            lat double,
+            geometry text,
 
-        if (useSolr) {
-          //
-          // NOTE: LOOK AT THE SOFT COMMIT INTERVAL IN SOLR
-          //
-          // enable search on all fields (except geometry)
-          session.execute(
-            s"""
-               | CREATE SEARCH INDEX ON $keyspace.$table
-               | WITH COLUMNS
-               |  id,
-               |  ts,
-               |  speed,
-               |  dist,
-               |  bearing,
-               |  rtid,
-               |  orig,
-               |  dest,
-               |  secstodep,
-               |  lon,
-               |  lat
-         """.stripMargin
+            PRIMARY KEY (id, ts)
+          )"""
           )
 
-          // check if we want to store the Geo
-          if (storeGeo.toBoolean) {
-            // enable search on geometry field
+          if (useSolr) {
+            //
+            // NOTE: LOOK AT THE SOFT COMMIT INTERVAL IN SOLR
+            //
+            // enable search on all fields (except geometry)
             session.execute(
               s"""
-                 |ALTER SEARCH INDEX SCHEMA ON $keyspace.$table
-                 |ADD types.fieldType[ @name='rpt',
-                 |                     @class='solr.SpatialRecursivePrefixTreeFieldType',
-                 |                     @geo='false',
-                 |                     @worldBounds='ENVELOPE(-1000, 1000, 1000, -1000)',
-                 |                     @maxDistErr='0.001',
-                 |                     @distanceUnits='degrees' ]
+                 | CREATE SEARCH INDEX ON $keyspace.$table
+                 | WITH COLUMNS
+                 |  id,
+                 |  ts,
+                 |  speed,
+                 |  dist,
+                 |  bearing,
+                 |  rtid,
+                 |  orig,
+                 |  dest,
+                 |  secstodep,
+                 |  lon,
+                 |  lat
            """.stripMargin
             )
-            session.execute(
-              s"""
-                 |ALTER SEARCH INDEX SCHEMA ON $keyspace.$table
-                 |ADD fields.field[ @name='geometry',
-                 |                  @type='rpt',
-                 |                  @indexed='true',
-                 |                  @stored='true' ];
-           """.stripMargin
-            )
-            session.execute(
-              s"RELOAD SEARCH INDEX ON $keyspace.$table"
-            )
+
+            // check if we want to store the Geo
+            if (storeGeo.toBoolean) {
+              // enable search on geometry field
+              session.execute(
+                s"""
+                   |ALTER SEARCH INDEX SCHEMA ON $keyspace.$table
+                   |ADD types.fieldType[ @name='rpt',
+                   |                     @class='solr.SpatialRecursivePrefixTreeFieldType',
+                   |                     @geo='false',
+                   |                     @worldBounds='ENVELOPE(-1000, 1000, 1000, -1000)',
+                   |                     @maxDistErr='0.001',
+                   |                     @distanceUnits='degrees' ]
+             """.stripMargin
+              )
+              session.execute(
+                s"""
+                   |ALTER SEARCH INDEX SCHEMA ON $keyspace.$table
+                   |ADD fields.field[ @name='geometry',
+                   |                  @type='rpt',
+                   |                  @indexed='true',
+                   |                  @stored='true' ];
+             """.stripMargin
+              )
+              session.execute(
+                s"RELOAD SEARCH INDEX ON $keyspace.$table"
+              )
+            }
           }
-        }
+      }
     }
 
     // the streaming context
