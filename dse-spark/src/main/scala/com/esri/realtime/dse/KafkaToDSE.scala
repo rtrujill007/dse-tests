@@ -61,11 +61,12 @@ object KafkaToDSE{
 
     val sc = new SparkContext(sparkMaster, "KafkaToDSE", sConf)
 
-    val keyspace = "realtime1"
+    val keyspace = "realtime"
     val table = "planes"
 
     // check if need to recreate the tables
     if (recreateTable.toBoolean) {
+      log.info(s"We are recreating the table: $keyspace.$table")
       println(s"We are recreating the table: $keyspace.$table")
       CassandraConnector(sConf).withSessionDo {
         session =>
@@ -148,6 +149,9 @@ object KafkaToDSE{
       }
     }
 
+    log.info("Done initialization, ready to start streaming...")
+    println("Done initialization, ready to start streaming...")
+
     // the streaming context
     val ssc = new StreamingContext(sc, Milliseconds(emitInterval.toInt))
 
@@ -193,6 +197,9 @@ object KafkaToDSE{
           )
         )
     }
+
+    log.info("Stream is starting now...")
+    println("Stream is starting now...")
 
     // start the stream
     ssc.start
