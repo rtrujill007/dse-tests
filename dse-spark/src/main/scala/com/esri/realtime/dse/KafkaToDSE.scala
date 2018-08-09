@@ -45,9 +45,9 @@ object KafkaToDSE{
     // configuration
     val sConf = new SparkConf(true)
         .set("spark.cassandra.connection.host", kCassandraHost)
-        .set("spark.cassandra.output.concurrent.writes", "20")              // default is 5
-        .set("spark.cassandra.output.batch.size.bytes", "1024000")          // default is 1024
-        .set("spark.cassandra.output.batch.grouping.buffer.size", "10000")  // default is 1000
+        //.set("spark.cassandra.output.concurrent.writes", "20")              // default is 5
+        //.set("spark.cassandra.output.batch.size.bytes", "1024000")          // default is 1024
+        //.set("spark.cassandra.output.batch.grouping.buffer.size", "10000")  // default is 1000
 
         //.set("spark.cassandra.connection.keep_alive_ms", "10000") //default is 250
         //.set("spark.cassandra.output.batch.size.rows", "1000") // default is "auto"
