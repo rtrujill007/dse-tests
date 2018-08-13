@@ -91,7 +91,7 @@ object KafkaToDSE{
             lat double,
             geometry text,
 
-            PRIMARY KEY (id, ts)
+            PRIMARY KEY (id)
           )"""
           )
 
