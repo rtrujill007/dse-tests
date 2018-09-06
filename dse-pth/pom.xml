@@ -23,6 +23,14 @@
         <maven.compiler.target>1.8</maven.compiler.target>
         <main.class>com.esri.rttest.Help</main.class>
         <project.name>pth</project.name>
+
+        <yum.install.command.prefix>for i in {1..30}; do echo "Attempt #$i"; yum install -y </yum.install.command.prefix>
+        <yum.install.command.suffix>; rc=$?; if [ $rc -ne 0 ]; then sleep 30s; else break; fi done</yum.install.command.suffix>
+        <realtime.libs.dest>/realtime-libs</realtime.libs.dest>
+        <realtime.libs.classpath>${realtime.libs.dest}/*</realtime.libs.classpath>
+        <docker.namespace>rtrujill007</docker.namespace>
+        <docker.repository>dse-pth</docker.repository>
+        <docker.image.name>${docker.namespace}/${docker.repository}</docker.image.name>
     </properties>
 
     <dependencies>
@@ -153,6 +161,47 @@
                         </manifestEntries>
                     </archive>
                 </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>io.fabric8</groupId>
+                <artifactId>docker-maven-plugin</artifactId>
+                <configuration>
+                    <skip>false</skip>
+                    <images>
+                        <image>
+                            <alias>dse-pth</alias>
+                            <name>${docker.image.name}</name>
+                            <build>
+                                <from>centos:7</from>
+                                <assembly>
+                                    <descriptor>assembly.xml</descriptor>
+                                </assembly>
+                                <env>
+                                    <CLASSPATH>${realtime.libs.classpath}</CLASSPATH>
+                                </env>
+                                <runCmds>
+                                    <runCmd>${yum.install.command.prefix} java-1.8.0-openjdk.x86_64 ${yum.install.command.suffix}</runCmd>
+                                    <runCmd>mv /maven ${realtime.libs.dest}</runCmd>
+                                </runCmds>
+                                <!--
+                                <entryPoint>
+                                    <shell>java com.esri.realtime.receiver.Receiver</shell>
+                                </entryPoint>
+                                -->
+                            </build>
+                        </image>
+                    </images>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>create-images</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>build</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
 
         </plugins>

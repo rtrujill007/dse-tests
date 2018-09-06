@@ -1,0 +1,25 @@
+{
+  "id": "dse-pth",
+  "labels": {},
+  "run": {
+    "cpus": 6,
+    "mem": 16000,
+    "disk": 20000,
+    "cmd": "java com.esri.rttest.send.Kafka broker.kafka.l4lb.thisdcos.directory:9092 planes /realtime-libs/planes00001 100000 30000000\n\n",
+    "env": {},
+    "placement": {
+      "constraints": []
+    },
+    "artifacts": [],
+    "maxLaunchDelay": 3600,
+    "docker": {
+      "image": "rtrujill007/dse-pth:latest"
+    },
+    "volumes": [],
+    "restart": {
+      "policy": "NEVER"
+    },
+    "secrets": {}
+  },
+  "schedules": []
+}
