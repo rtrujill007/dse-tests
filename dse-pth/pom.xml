@@ -193,6 +193,7 @@
                         </image>
                     </images>
                 </configuration>
+                <!--
                 <executions>
                     <execution>
                         <id>create-images</id>
@@ -202,6 +203,7 @@
                         </goals>
                     </execution>
                 </executions>
+                -->
             </plugin>
 
         </plugins>
